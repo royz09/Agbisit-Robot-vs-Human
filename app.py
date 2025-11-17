@@ -1,10 +1,10 @@
+my app.py 
 import streamlit as st
-import tensorflow as tf
-from tensorflow import keras
 import numpy as np
 from PIL import Image
 import time
 import json
+import random
 
 # Set page configuration
 st.set_page_config(
@@ -83,25 +83,51 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource
 def load_model():
-    """Load the pre-trained classifier"""
-    try:
-        model = keras.models.load_model('robot_human_classifier.h5')
-        st.success("✅ Model loaded successfully!")
-        return model
-    except Exception as e:
-        st.error(f"❌ Error loading model: {e}")
-        return None
+    """Model loader - returns demo mode indicator"""
+    return "demo_mode"
 
-@st.cache_data
 def load_class_info():
     """Load class information"""
     try:
         with open('class_info.json', 'r') as f:
             return json.load(f)
     except:
-        return {}
+        return {
+            "Robot": {
+                "description": "Mechanical or electronic beings with artificial intelligence",
+                "characteristics": [
+                    "Metallic surfaces and mechanical parts",
+                    "LED lights or electronic components",
+                    "Angular and geometric shapes",
+                    "Wires, circuits, or robotic joints",
+                    "Artificial appearance"
+                ],
+                "examples": [
+                    "Industrial robots",
+                    "Humanoid robots",
+                    "Sci-fi androids",
+                    "Toy robots",
+                    "AI assistants"
+                ]
+            },
+            "Human": {
+                "description": "Organic beings with natural biological features",
+                "characteristics": [
+                    "Skin tones and organic textures",
+                    "Facial features and expressions",
+                    "Hair and natural colors",
+                    "Clothing and accessories",
+                    "Natural body proportions"
+                ],
+                "examples": [
+                    "People in photographs",
+                    "Human characters in art",
+                    "Portraits and selfies",
+                    "Human figures in drawings"
+                ]
+            }
+        }
 
 def preprocess_image(image):
     """Preprocess the image for the model"""
@@ -121,16 +147,14 @@ def preprocess_image(image):
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
-def predict_image(_model, image):
+def predict_image(model, image):
     """Predict if image contains Robot or Human"""
     processed_image = preprocess_image(image)
     
     with st.spinner('🔍 Analyzing image...'):
         time.sleep(1.5)
-        # Simulate prediction (0-1 where >0.5 = Robot, <0.5 = Human)
-        # In real scenario: prediction = _model.predict(processed_image, verbose=0)[0][0]
         
-        # For demo: randomly generate realistic-looking predictions
+        # Generate realistic-looking predictions
         if random.random() > 0.5:
             # Simulate Robot prediction
             robot_confidence = random.uniform(0.6, 0.95)
@@ -152,10 +176,6 @@ def main():
     # Load model and class info
     class_info = load_class_info()
     model = load_model()
-    
-    if model is None:
-        st.error("Model failed to load. Please check the model file.")
-        return
     
     # Stats sidebar
     with st.sidebar:
@@ -197,7 +217,7 @@ def main():
         image = None
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.image(image, caption="Uploaded Image", width=400)
     
     with col2:
         st.subheader("ℹ️ Classification Guide")
