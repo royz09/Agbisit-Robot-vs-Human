@@ -1,0 +1,30 @@
+{
+  "Human": {
+    "description": "Biological being with organic features",
+    "characteristics": [
+      "Flesh and blood",
+      "Emotional expressions",
+      "Organic shapes"
+    ],
+    "examples": [
+      "People",
+      "Anime characters",
+      "Cartoon humans"
+    ]
+  },
+  "Robot": {
+    "description": "Artificial being with mechanical features",
+    "characteristics": [
+      "Metallic surfaces",
+      "Mechanical parts",
+      "LED lights",
+      "Angular shapes"
+    ],
+    "examples": [
+      "Androids",
+      "Mechs",
+      "Robotic characters",
+      "AI beings"
+    ]
+  }
+}
