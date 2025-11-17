@@ -1,30 +1,35 @@
 {
-  "Human": {
-    "description": "Biological being with organic features",
-    "characteristics": [
-      "Flesh and blood",
-      "Emotional expressions",
-      "Organic shapes"
-    ],
-    "examples": [
-      "People",
-      "Anime characters",
-      "Cartoon humans"
-    ]
-  },
-  "Robot": {
-    "description": "Artificial being with mechanical features",
-    "characteristics": [
-      "Metallic surfaces",
-      "Mechanical parts",
-      "LED lights",
-      "Angular shapes"
-    ],
-    "examples": [
-      "Androids",
-      "Mechs",
-      "Robotic characters",
-      "AI beings"
-    ]
-  }
+    "Robot": {
+        "description": "Mechanical or electronic beings with artificial intelligence",
+        "characteristics": [
+            "Metallic surfaces and mechanical parts",
+            "LED lights or electronic components",
+            "Angular and geometric shapes",
+            "Wires, circuits, or robotic joints",
+            "Artificial appearance"
+        ],
+        "examples": [
+            "Industrial robots",
+            "Humanoid robots",
+            "Sci-fi androids",
+            "Toy robots",
+            "AI assistants"
+        ]
+    },
+    "Human": {
+        "description": "Organic beings with natural biological features",
+        "characteristics": [
+            "Skin tones and organic textures",
+            "Facial features and expressions",
+            "Hair and natural colors",
+            "Clothing and accessories",
+            "Natural body proportions"
+        ],
+        "examples": [
+            "People in photographs",
+            "Human characters in art",
+            "Portraits and selfies",
+            "Human figures in drawings"
+        ]
+    }
 }
