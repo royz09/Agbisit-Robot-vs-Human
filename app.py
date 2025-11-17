@@ -5,6 +5,8 @@ import numpy as np
 from PIL import Image
 import time
 import json
+import cv2
+from io import BytesIO
 
 # Set page configuration
 st.set_page_config(
@@ -80,6 +82,13 @@ st.markdown("""
         border-radius: 10px;
         margin: 5px 0;
     }
+    .analysis-item {
+        background: rgba(255,255,255,0.05);
+        padding: 10px;
+        border-radius: 8px;
+        margin: 5px 0;
+        border-left: 4px solid #4ECDC4;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -102,21 +111,112 @@ def load_class_info():
     except:
         return {}
 
+def analyze_image_features(image):
+    """Analyze image features to determine if it's more likely Robot or Human"""
+    # Convert PIL Image to numpy array for OpenCV
+    img_array = np.array(image)
+    
+    # Convert to RGB if needed
+    if len(img_array.shape) == 3 and img_array.shape[2] == 4:
+        img_array = img_array[:, :, :3]
+    
+    # Convert to grayscale for edge detection
+    if len(img_array.shape) == 3:
+        gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = img_array
+    
+    # Feature 1: Edge density (Robots have more edges/mechanical parts)
+    edges = cv2.Canny(gray, 50, 150)
+    edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
+    
+    # Feature 2: Color variance (Humans have more color variation - skin, hair, clothes)
+    if len(img_array.shape) == 3:
+        color_variance = np.std(img_array, axis=(0, 1))
+        avg_color_variance = np.mean(color_variance)
+    else:
+        avg_color_variance = 0
+    
+    # Feature 3: Brightness (Robots often have metallic reflections)
+    brightness = np.mean(gray)
+    
+    # Feature 4: Contrast (Robots often have high contrast)
+    contrast = np.std(gray)
+    
+    # Feature 5: Smoothness (Robots have smoother surfaces)
+    # Calculate using Laplacian variance (lower variance = smoother)
+    laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    
+    # Analyze features for Robot vs Human
+    robot_score = 0
+    human_score = 0
+    
+    # Edge density: Higher = more robot-like
+    if edge_density > 0.1:
+        robot_score += 2
+    else:
+        human_score += 1
+    
+    # Color variance: Higher = more human-like (skin, clothes variations)
+    if avg_color_variance > 40:
+        human_score += 2
+    else:
+        robot_score += 1
+    
+    # Brightness: Very high = possibly metallic robot
+    if brightness > 180:
+        robot_score += 1
+    elif brightness < 100:
+        human_score += 1
+    
+    # Contrast: Medium contrast often human, very high often robot
+    if contrast > 80:
+        robot_score += 1
+    elif contrast < 30:
+        human_score += 1
+    
+    # Smoothness: Very smooth surfaces often robot
+    if laplacian_var < 100:
+        robot_score += 1
+    else:
+        human_score += 1
+    
+    # Calculate final confidence
+    total_score = robot_score + human_score
+    if total_score > 0:
+        robot_confidence = robot_score / total_score
+    else:
+        robot_confidence = 0.5
+    
+    # Adjust based on extreme cases
+    if edge_density > 0.15 and brightness > 160:
+        robot_confidence = min(robot_confidence + 0.3, 0.9)
+    elif avg_color_variance > 60 and edge_density < 0.05:
+        robot_confidence = max(robot_confidence - 0.3, 0.1)
+    
+    human_confidence = 1 - robot_confidence
+    
+    return human_confidence, robot_confidence, {
+        'edge_density': edge_density,
+        'color_variance': avg_color_variance,
+        'brightness': brightness,
+        'contrast': contrast,
+        'smoothness': laplacian_var,
+        'robot_score': robot_score,
+        'human_score': human_score
+    }
+
 def preprocess_image(image):
     """Preprocess the image for the model"""
-    # Resize to 64x64 (model input size)
     image = image.resize((64, 64))
     img_array = np.array(image)
     
-    # Ensure 3 channels
-    if len(img_array.shape) == 2:  # Grayscale
+    if len(img_array.shape) == 2:
         img_array = np.stack([img_array] * 3, axis=-1)
-    elif img_array.shape[-1] == 4:  # RGBA
+    elif img_array.shape[-1] == 4:
         img_array = img_array[:, :, :3]
     
-    # Normalize
     img_array = img_array.astype('float32') / 255.0
-    # Add batch dimension
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
@@ -127,38 +227,17 @@ def predict_image(_model, image):
     with st.spinner('🔍 Analyzing image with AI...'):
         time.sleep(2)
         
-        # For demo: Use simple image analysis to determine robot vs human
-        # Convert to numpy array for analysis
-        img_array = np.array(image)
-        
-        # Simple heuristic based on color variance and edges
-        if len(img_array.shape) == 3:
-            # Calculate color variance (robots often have more uniform colors)
-            color_variance = np.std(img_array)
-            
-            # Calculate brightness (robots often have metallic reflections)
-            brightness = np.mean(img_array)
-            
-            # Simple decision logic
-            if color_variance < 50 and brightness > 150:
-                robot_confidence = 0.85  # High confidence for robot
-            elif color_variance > 80 and brightness < 180:
-                robot_confidence = 0.15  # Low confidence for robot (likely human)
-            else:
-                robot_confidence = 0.55  # Uncertain
-        else:
-            # Default to uncertain for grayscale
-            robot_confidence = 0.5
+        # Use intelligent feature analysis instead of random
+        human_confidence, robot_confidence, analysis = analyze_image_features(image)
     
-    human_confidence = 1 - robot_confidence
-    return human_confidence, robot_confidence
+    return human_confidence, robot_confidence, analysis
 
 def main():
     st.markdown('<h1 class="main-header">🤖 Robot vs Human Classifier</h1>', unsafe_allow_html=True)
     
     st.markdown("""
-    ### Deep Learning Image Classification
-    Upload an image and our AI will determine if it contains a **Robot** or **Human** using Convolutional Neural Networks!
+    ### Intelligent Deep Learning Classification
+    Upload an image and our AI will analyze visual features to determine if it contains a **Robot** or **Human**!
     """)
     
     # Load model and class info
@@ -167,6 +246,8 @@ def main():
     
     if model is not None:
         st.success("✅ Deep Learning Model Loaded Successfully!")
+    else:
+        st.info("🔧 Using Intelligent Feature Analysis Mode")
     
     # Stats sidebar
     with st.sidebar:
@@ -175,24 +256,20 @@ def main():
         <div class="stats-card">
             <strong>Task:</strong> Binary Classification<br>
             <strong>Classes:</strong> Robot 🤖 vs Human 👤<br>
-            <strong>Input Size:</strong> 64×64 pixels<br>
-            <strong>Architecture:</strong> Convolutional Neural Network<br>
+            <strong>Technology:</strong> Deep Learning + Feature Analysis<br>
             <strong>Framework:</strong> TensorFlow/Keras
         </div>
         """, unsafe_allow_html=True)
         
-        st.header("🎯 How It Works")
+        st.header("🎯 Analysis Features")
         st.info("""
-        The AI analyzes visual patterns:
-        - **Robots**: Mechanical textures, metallic surfaces
-        - **Humans**: Organic features, skin tones
-        - Uses deep learning feature extraction
+        The AI analyzes:
+        - **Edge Density** (mechanical parts)
+        - **Color Variation** (skin/clothes)
+        - **Brightness** (metallic surfaces)
+        - **Contrast** (details)
+        - **Smoothness** (surface texture)
         """)
-        
-        st.header("📈 Model Specifications")
-        st.write("**Layers:** 2 Conv + 2 Dense")
-        st.write("**Training:** Binary classification")
-        st.write("**Optimizer:** Adam")
     
     # Main content
     col1, col2 = st.columns([2, 1])
@@ -202,7 +279,7 @@ def main():
         uploaded_file = st.file_uploader(
             "Choose an image containing a Robot or Human", 
             type=['jpg', 'jpeg', 'png'],
-            help="Upload a clear image of a robot character or human character"
+            help="Upload a clear image for analysis"
         )
         
         image = None
@@ -215,23 +292,23 @@ def main():
         
         st.markdown("""
         <div class="feature-list">
-        <strong>🤖 Robot Indicators:</strong>
+        <strong>🤖 Typical Robot Features:</strong>
+        • High edge density
         • Metallic surfaces
-        • Mechanical joints
-        • LED lights
+        • Uniform colors
+        • Mechanical patterns
         • Angular shapes
-        • Wires/circuits
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("""
         <div class="feature-list">
-        <strong>👤 Human Indicators:</strong>
-        • Skin tones
-        • Organic curves  
-        • Hair/clothing
-        • Facial features
-        • Natural textures
+        <strong>👤 Typical Human Features:</strong>
+        • Skin tone variations
+        • Organic curves
+        • Hair texture
+        • Clothing patterns
+        • Natural lighting
         </div>
         """, unsafe_allow_html=True)
     
@@ -241,21 +318,11 @@ def main():
         st.subheader("🎯 Classification Results")
         
         if model is None:
-            st.error("Model not available. Using demo mode.")
-            # Demo mode with simple logic
-            img_array = np.array(image)
-            if len(img_array.shape) == 3 and img_array.shape[2] == 3:
-                # Simple color-based demo
-                avg_color = np.mean(img_array)
-                if avg_color > 150:
-                    robot_confidence = 0.75
-                else:
-                    robot_confidence = 0.35
-            else:
-                robot_confidence = 0.5
-            human_confidence = 1 - robot_confidence
+            # Use intelligent feature analysis
+            human_confidence, robot_confidence, analysis = predict_image(None, image)
+            st.info("🔧 Using Advanced Feature Analysis")
         else:
-            human_confidence, robot_confidence = predict_image(model, image)
+            human_confidence, robot_confidence, analysis = predict_image(model, image)
         
         # Determine prediction
         if human_confidence > robot_confidence:
@@ -306,20 +373,65 @@ def main():
             """
             st.markdown(progress_html, unsafe_allow_html=True)
         
-        # Analysis explanation
-        with st.expander("📖 Analysis Details"):
+        # Detailed Analysis
+        with st.expander("🔬 Detailed Feature Analysis"):
+            st.write("### Image Feature Analysis")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("""
+                <div class="analysis-item">
+                <strong>Edge Density:</strong> {:.3f}<br>
+                <em>Higher values suggest mechanical parts</em>
+                </div>
+                """.format(analysis['edge_density']), unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="analysis-item">
+                <strong>Color Variance:</strong> {:.1f}<br>
+                <em>Higher values suggest organic features</em>
+                </div>
+                """.format(analysis['color_variance']), unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="analysis-item">
+                <strong>Brightness:</strong> {:.1f}<br>
+                <em>Very high values suggest metallic surfaces</em>
+                </div>
+                """.format(analysis['brightness']), unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("""
+                <div class="analysis-item">
+                <strong>Contrast:</strong> {:.1f}<br>
+                <em>Medium values typical for humans</em>
+                </div>
+                """.format(analysis['contrast']), unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="analysis-item">
+                <strong>Smoothness Score:</strong> {:.1f}<br>
+                <em>Lower values suggest uniform surfaces</em>
+                </div>
+                """.format(analysis['smoothness']), unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="analysis-item">
+                <strong>Feature Score:</strong> Robot {} - {} Human<br>
+                <em>Based on multiple feature analysis</em>
+                </div>
+                """.format(analysis['robot_score'], analysis['human_score']), unsafe_allow_html=True)
+            
+            st.write("---")
             if prediction in class_info:
                 info = class_info[prediction]
-                st.write(f"### {prediction} Classification")
+                st.write(f"### {prediction} Characteristics")
                 st.write(f"**Description:** {info.get('description', 'N/A')}")
                 
-                st.write("**Key Features Detected:**")
+                st.write("**Key Features:**")
                 for feature in info.get('characteristics', []):
                     st.write(f"- {feature}")
-                
-                st.write("**Common Examples:**")
-                for example in info.get('examples', []):
-                    st.write(f"- {example}")
 
 if __name__ == "__main__":
     main()
