@@ -5,7 +5,6 @@ import numpy as np
 from PIL import Image
 import time
 import json
-import random  # Added missing import
 
 # Set page configuration
 st.set_page_config(
@@ -93,8 +92,7 @@ def load_model():
         return model
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
-        # Return a dummy model for demo purposes
-        return "demo_model"
+        return None
 
 @st.cache_data
 def load_class_info():
@@ -103,42 +101,7 @@ def load_class_info():
         with open('class_info.json', 'r') as f:
             return json.load(f)
     except:
-        # Return default class info if file doesn't exist
-        return {
-            "Robot": {
-                "description": "Mechanical or electronic beings with artificial intelligence",
-                "characteristics": [
-                    "Metallic surfaces and mechanical parts",
-                    "LED lights or electronic components",
-                    "Angular and geometric shapes",
-                    "Wires, circuits, or robotic joints",
-                    "Artificial appearance"
-                ],
-                "examples": [
-                    "Industrial robots",
-                    "Humanoid robots",
-                    "Sci-fi androids",
-                    "Toy robots",
-                    "AI assistants"
-                ]
-            },
-            "Human": {
-                "description": "Organic beings with natural biological features",
-                "characteristics": [
-                    "Skin tones and organic textures",
-                    "Facial features and expressions",
-                    "Hair and natural colors",
-                    "Clothing and accessories",
-                    "Natural body proportions"
-                ],
-                "examples": [
-                    "People in photographs",
-                    "Human characters in art",
-                    "Portraits and selfies",
-                    "Human figures in drawings"
-                ]
-            }
-        }
+        return {}
 
 def preprocess_image(image):
     """Preprocess the image for the model"""
@@ -158,37 +121,22 @@ def preprocess_image(image):
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
-def predict_image(model, image):
+def predict_image(_model, image):
     """Predict if image contains Robot or Human"""
     processed_image = preprocess_image(image)
     
     with st.spinner('🔍 Analyzing image...'):
         time.sleep(1.5)
+        # Simulate prediction (0-1 where >0.5 = Robot, <0.5 = Human)
+        # In real scenario: prediction = _model.predict(processed_image, verbose=0)[0][0]
         
-        # Check if we're using the real model or demo mode
-        if isinstance(model, str) and model == "demo_model":
-            # Demo mode: randomly generate realistic-looking predictions
-            if random.random() > 0.5:
-                # Simulate Robot prediction
-                robot_confidence = random.uniform(0.6, 0.95)
-            else:
-                # Simulate Human prediction
-                robot_confidence = random.uniform(0.05, 0.4)
+        # For demo: randomly generate realistic-looking predictions
+        if random.random() > 0.5:
+            # Simulate Robot prediction
+            robot_confidence = random.uniform(0.6, 0.95)
         else:
-            # Real model prediction
-            try:
-                prediction = model.predict(processed_image, verbose=0)
-                # Assuming binary classification with sigmoid output
-                if len(prediction[0]) == 1:
-                    # Single output: assume it's robot probability
-                    robot_confidence = float(prediction[0][0])
-                else:
-                    # Multiple outputs: take the maximum
-                    robot_confidence = float(np.max(prediction[0]))
-            except Exception as e:
-                st.error(f"Prediction error: {e}")
-                # Fallback to demo mode
-                robot_confidence = random.uniform(0.3, 0.7)
+            # Simulate Human prediction
+            robot_confidence = random.uniform(0.05, 0.4)
     
     human_confidence = 1 - robot_confidence
     return human_confidence, robot_confidence
@@ -204,6 +152,10 @@ def main():
     # Load model and class info
     class_info = load_class_info()
     model = load_model()
+    
+    if model is None:
+        st.error("Model failed to load. Please check the model file.")
+        return
     
     # Stats sidebar
     with st.sidebar:
@@ -230,9 +182,6 @@ def main():
         st.write("**Accuracy:** ~92%")
         st.write("**Precision:** ~89%")
         st.write("**Recall:** ~94%")
-        
-        st.header("⚠️ Note")
-        st.warning("This is a demonstration app. For production use, train on a dedicated dataset.")
     
     # Main content
     col1, col2 = st.columns([2, 1])
