@@ -298,4 +298,42 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-        # Confidence b
+        # Confidence bars
+        st.markdown("### 📊 Confidence Levels")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**🤖 Robot Confidence**")
+            st.write(f"{robot_confidence:.2%}")
+            st.markdown(f"""
+            <div class="confidence-bar">
+                <div class="confidence-fill" style="width: {robot_confidence*100}%">
+                    {robot_confidence:.2%}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.write("**👤 Human Confidence**")
+            st.write(f"{human_confidence:.2%}")
+            st.markdown(f"""
+            <div class="confidence-bar">
+                <div class="confidence-fill" style="width: {human_confidence*100}%">
+                    {human_confidence:.2%}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Class info
+        with st.expander("📖 Class Information"):
+            if prediction in class_info:
+                info = class_info[prediction]
+                st.write(f"### {prediction} Characteristics")
+                st.write(f"**Description:** {info.get('description', 'N/A')}")
+                st.write("**Key Features:**")
+                for feature in info.get('characteristics', []):
+                    st.write(f"- {feature}")
+                st.write("**Common Examples:**")
+                for example in info.get('examples', []):
+                    st.write(f"- {example}")
+
+if __name__ == "__main__":
+    main()
