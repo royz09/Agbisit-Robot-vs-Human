@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 import time
 import json
-
+import random
 # Set page configuration
 st.set_page_config(
     page_title="Robot vs Human Classifier",
