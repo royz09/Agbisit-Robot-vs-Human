@@ -1,11 +1,10 @@
 import streamlit as st
-import tensorflow as tf
-from tensorflow import keras
 import numpy as np
 from PIL import Image
 import time
 import json
 import random
+
 # Set page configuration
 st.set_page_config(
     page_title="Robot vs Human Classifier",
@@ -80,28 +79,64 @@ st.markdown("""
         border-radius: 10px;
         margin: 5px 0;
     }
+    .demo-notice {
+        background: #FFD93D;
+        color: black;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 10px 0;
+        text-align: center;
+        font-weight: bold;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource
 def load_model():
-    """Load the pre-trained classifier"""
-    try:
-        model = keras.models.load_model('robot_human_classifier.h5')
-        st.success("✅ Model loaded successfully!")
-        return model
-    except Exception as e:
-        st.error(f"❌ Error loading model: {e}")
-        return None
+    """Demo model loader - returns demo mode indicator"""
+    st.warning("🚧 DEMO MODE - Using simulated predictions")
+    return "demo_mode"
 
-@st.cache_data
 def load_class_info():
     """Load class information"""
     try:
         with open('class_info.json', 'r') as f:
             return json.load(f)
     except:
-        return {}
+        return {
+            "Robot": {
+                "description": "Mechanical or electronic beings with artificial intelligence",
+                "characteristics": [
+                    "Metallic surfaces and mechanical parts",
+                    "LED lights or electronic components",
+                    "Angular and geometric shapes",
+                    "Wires, circuits, or robotic joints",
+                    "Artificial appearance"
+                ],
+                "examples": [
+                    "Industrial robots",
+                    "Humanoid robots",
+                    "Sci-fi androids",
+                    "Toy robots",
+                    "AI assistants"
+                ]
+            },
+            "Human": {
+                "description": "Organic beings with natural biological features",
+                "characteristics": [
+                    "Skin tones and organic textures",
+                    "Facial features and expressions",
+                    "Hair and natural colors",
+                    "Clothing and accessories",
+                    "Natural body proportions"
+                ],
+                "examples": [
+                    "People in photographs",
+                    "Human characters in art",
+                    "Portraits and selfies",
+                    "Human figures in drawings"
+                ]
+            }
+        }
 
 def preprocess_image(image):
     """Preprocess the image for the model"""
@@ -121,22 +156,25 @@ def preprocess_image(image):
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
-def predict_image(_model, image):
+def predict_image(model, image):
     """Predict if image contains Robot or Human"""
     processed_image = preprocess_image(image)
     
     with st.spinner('🔍 Analyzing image...'):
         time.sleep(1.5)
-        # Simulate prediction (0-1 where >0.5 = Robot, <0.5 = Human)
-        # In real scenario: prediction = _model.predict(processed_image, verbose=0)[0][0]
         
-        # For demo: randomly generate realistic-looking predictions
-        if random.random() > 0.5:
-            # Simulate Robot prediction
-            robot_confidence = random.uniform(0.6, 0.95)
+        # Check if we're in demo mode
+        if model == "demo_mode":
+            # For demo: randomly generate realistic-looking predictions
+            if random.random() > 0.5:
+                # Simulate Robot prediction
+                robot_confidence = random.uniform(0.6, 0.95)
+            else:
+                # Simulate Human prediction
+                robot_confidence = random.uniform(0.05, 0.4)
         else:
-            # Simulate Human prediction
-            robot_confidence = random.uniform(0.05, 0.4)
+            # This would be real model prediction
+            robot_confidence = random.uniform(0.3, 0.7)
     
     human_confidence = 1 - robot_confidence
     return human_confidence, robot_confidence
@@ -149,13 +187,17 @@ def main():
     Upload an image and our AI will determine if it contains a **Robot** or **Human** using Convolutional Neural Networks!
     """)
     
+    # Demo notice
+    st.markdown("""
+    <div class="demo-notice">
+    🚧 DEMO MODE - This is a demonstration showing how the classifier would work. 
+    For production use, train on a dedicated dataset with TensorFlow/PyTorch.
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Load model and class info
     class_info = load_class_info()
     model = load_model()
-    
-    if model is None:
-        st.error("Model failed to load. Please check the model file.")
-        return
     
     # Stats sidebar
     with st.sidebar:
@@ -166,7 +208,7 @@ def main():
             <strong>Classes:</strong> Robot vs Human<br>
             <strong>Input Size:</strong> 128×128 pixels<br>
             <strong>Architecture:</strong> CNN<br>
-            <strong>Framework:</strong> TensorFlow
+            <strong>Status:</strong> Demo Mode
         </div>
         """, unsafe_allow_html=True)
         
@@ -182,6 +224,13 @@ def main():
         st.write("**Accuracy:** ~92%")
         st.write("**Precision:** ~89%")
         st.write("**Recall:** ~94%")
+        
+        st.header("💡 Real Implementation")
+        st.write("To use a real model:")
+        st.write("1. Train with TensorFlow")
+        st.write("2. Export as .h5 file")
+        st.write("3. Update requirements.txt")
+        st.write("4. Replace demo code")
     
     # Main content
     col1, col2 = st.columns([2, 1])
@@ -197,7 +246,7 @@ def main():
         image = None
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.image(image, caption="Uploaded Image", use_container_width=True)  # Fixed deprecated parameter
     
     with col2:
         st.subheader("ℹ️ Classification Guide")
