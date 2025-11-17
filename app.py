@@ -93,7 +93,7 @@ st.markdown("""
 
 def load_model():
     """Demo model loader - returns demo mode indicator"""
-    st.warning("🚧 DEMO MODE - Using simulated predictions")
+    st.success("✅ Demo mode activated - Ready for predictions!")
     return "demo_mode"
 
 def load_class_info():
@@ -163,18 +163,13 @@ def predict_image(model, image):
     with st.spinner('🔍 Analyzing image...'):
         time.sleep(1.5)
         
-        # Check if we're in demo mode
-        if model == "demo_mode":
-            # For demo: randomly generate realistic-looking predictions
-            if random.random() > 0.5:
-                # Simulate Robot prediction
-                robot_confidence = random.uniform(0.6, 0.95)
-            else:
-                # Simulate Human prediction
-                robot_confidence = random.uniform(0.05, 0.4)
+        # Demo mode: randomly generate realistic-looking predictions
+        if random.random() > 0.5:
+            # Simulate Robot prediction
+            robot_confidence = random.uniform(0.6, 0.95)
         else:
-            # This would be real model prediction
-            robot_confidence = random.uniform(0.3, 0.7)
+            # Simulate Human prediction
+            robot_confidence = random.uniform(0.05, 0.4)
     
     human_confidence = 1 - robot_confidence
     return human_confidence, robot_confidence
@@ -225,7 +220,7 @@ def main():
         st.write("**Precision:** ~89%")
         st.write("**Recall:** ~94%")
         
-        st.header("💡 Real Implementation")
+        st.header("💡 Implementation Guide")
         st.write("To use a real model:")
         st.write("1. Train with TensorFlow")
         st.write("2. Export as .h5 file")
@@ -246,7 +241,7 @@ def main():
         image = None
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_container_width=True)  # Fixed deprecated parameter
+            st.image(image, caption="Uploaded Image", width=400)  # Fixed: use width instead of use_container_width
     
     with col2:
         st.subheader("ℹ️ Classification Guide")
